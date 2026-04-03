@@ -7,8 +7,62 @@ import '../models/workout_phase.dart';
 import '../models/rest_log_entry.dart';
 import '../models/workout_settings.dart';
 import '../providers/workout_notifier.dart';
+import '../controllers/theme_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/digital_clock.dart';
+
+Color _homeBorderColor(BuildContext context) => AppTheme.accentRed.withValues(alpha: 0.22);
+
+Color _homeCardColor(BuildContext context) => Theme.of(context).cardColor;
+
+Color _homeMutedColor(BuildContext context) {
+  final base = Theme.of(context).textTheme.bodyMedium?.color;
+  return base?.withOpacity(0.72) ?? AppTheme.textMuted;
+}
+
+Color _glassGradientStart(BuildContext context) {
+  return Theme.of(context).brightness == Brightness.dark
+      ? AppTheme.bgCard.withValues(alpha: 0.95)
+      : Colors.white;
+}
+
+Color _glassGradientEnd(BuildContext context) {
+  return Theme.of(context).brightness == Brightness.dark
+      ? const Color(0xFF0E0E14)
+      : Colors.white;
+}
+
+Color _glassShadowColor(BuildContext context) {
+  return Theme.of(context).brightness == Brightness.dark
+      ? Colors.black.withOpacity(0.35)
+      : Colors.black.withOpacity(0.1);
+}
+
+BoxDecoration _homeDarkGlowDecoration() {
+  return BoxDecoration(
+    borderRadius: BorderRadius.circular(32),
+    gradient: const LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFF1A0A0E), AppTheme.bgCard, Color(0xFF120810)],
+    ),
+    border: Border.all(
+      color: AppTheme.accentRed.withOpacity(0.35),
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: AppTheme.accentRed.withOpacity(0.18),
+        blurRadius: 80,
+        spreadRadius: 3,
+      ),
+      BoxShadow(
+        color: AppTheme.accentRed.withOpacity(0.08),
+        blurRadius: 80,
+        spreadRadius: 3,
+      ),
+    ],
+  );
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,9 +90,12 @@ class _HomeScreenState extends State<HomeScreen> {
         return CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                child: Column(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -55,11 +112,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-              ),
+                
+              ],
             ),
+          ),
+        ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                //padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                padding: const EdgeInsets.only(left: 20, right: 20, top: 5),
                 child: const DigitalClock(),
               ),
             ),
@@ -107,12 +168,38 @@ class _SummaryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    if (isDark) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: _homeDarkGlowDecoration(),
+        child: Row(
+          children: [
+            Icon(
+              Icons.fitness_center_rounded,
+              color: AppTheme.accentRed.withValues(alpha: 0.9),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '${settings.seriesCount} series · ${_fmtRestBetweenLabel(settings.restSeconds)}',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: _homeMutedColor(context)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.borderSubtle),
-        color: AppTheme.bgCard.withValues(alpha: 0.6),
+        border: Border.all(color: AppTheme.accentRed.withOpacity(0.18)),
+        color: Colors.white,
       ),
       child: Row(
         children: [
@@ -123,11 +210,10 @@ class _SummaryChip extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              '${settings.seriesCount} series · ${_fmtRestBetweenLabel(settings.restSeconds)} · '
-              '${settings.soundEnabled ? "sonido on" : "sonido off"}',
+              '${settings.seriesCount} series · ${_fmtRestBetweenLabel(settings.restSeconds)}',
               style: Theme.of(
                 context,
-              ).textTheme.bodySmall?.copyWith(color: AppTheme.textMuted),
+              ).textTheme.bodySmall?.copyWith(color: _homeMutedColor(context)),
             ),
           ),
         ],
@@ -149,6 +235,8 @@ class _RoutinePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final w = workoutController;
     final total = w.workoutSettings?.seriesCount ?? 0;
+    final muted = _homeMutedColor(context);
+    final borderColor = _homeBorderColor(context);
 
     if (!w.hasSavedSettings) {
       return _GlassCard(
@@ -167,7 +255,7 @@ class _RoutinePanel extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'Ve a Configuración, elige series, tiempo de descanso y guarda.',
-                style: TextStyle(color: AppTheme.textMuted, height: 1.4),
+                style: TextStyle(color: muted, height: 1.4),
               ),
             ],
           ),
@@ -236,7 +324,7 @@ class _RoutinePanel extends StatelessWidget {
                 Text(
                   'Completa la serie y pulsa cuando termines.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppTheme.textMuted),
+                  style: TextStyle(color: muted),
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -245,8 +333,8 @@ class _RoutinePanel extends StatelessWidget {
                       child: OutlinedButton(
                         onPressed: () => w.abortRoutine(),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: AppTheme.textMuted,
-                          side: const BorderSide(color: AppTheme.borderSubtle),
+                          foregroundColor: muted,
+                          side: BorderSide(color: borderColor),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: const Text('Salir'),
@@ -287,7 +375,7 @@ class _RoutinePanel extends StatelessWidget {
                   style: GoogleFonts.dmSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textMuted,
+                    color: muted,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -311,21 +399,25 @@ class _RoutinePanel extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: progress,
                     minHeight: 6,
-                    backgroundColor: AppTheme.borderSubtle,
+                    backgroundColor: borderColor,
                     color: AppTheme.accentRed,
                   ),
                 ),
                 if (next != null)
                   Text(
                     'Próxima: serie $next de $total',
-                    style: TextStyle(color: AppTheme.textMuted),
+                    style: TextStyle(color: muted),
                   ),
                 const SizedBox(height: 16),
                 Text(
                   'Pantalla bloqueada: usa la acción «Siguiente» en la notificación.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: AppTheme.textMuted.withValues(alpha: 0.85),
+                    color:
+                        Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.color?.withOpacity(0.85) ??
+                        muted,
                     fontSize: 12,
                   ),
                 ),
@@ -336,8 +428,8 @@ class _RoutinePanel extends StatelessWidget {
                       child: OutlinedButton(
                         onPressed: () => w.abortRoutine(),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: AppTheme.textMuted,
-                          side: const BorderSide(color: AppTheme.borderSubtle),
+                          foregroundColor: muted,
+                          side: BorderSide(color: borderColor),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: const Text('Salir'),
@@ -421,22 +513,41 @@ class _RestHistoryList extends StatelessWidget {
             'Tiempos de descanso',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
-              color: AppTheme.textMuted,
+              color: _homeMutedColor(context),
             ),
           ),
         ),
         ...entries.asMap().entries.map((e) {
           final i = e.key + 1;
           final log = e.value;
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          
+          final bgColors = isDark
+              ? [const Color(0xFF1A0A0E), AppTheme.bgCard, const Color(0xFF120810)]
+              : [Colors.white, Colors.white, Colors.white];
+          
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.borderSubtle),
-                color: AppTheme.bgCard.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(isDark ? 32 : 14),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: bgColors,
+                ),
+                border: Border.all(
+                  color: AppTheme.accentRed.withOpacity(isDark ? 0.35 : 0.18),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.accentRed.withOpacity(isDark ? 0.18 : 0.08),
+                    blurRadius: 40,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
               child: Row(
                 children: [
@@ -498,25 +609,24 @@ class _GlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: AppTheme.accentRed.withValues(alpha: 0.22)),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppTheme.bgCard.withValues(alpha: 0.95),
-            const Color(0xFF0E0E14),
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 30,
-            offset: const Offset(0, 16),
-          ),
-        ],
-      ),
+      decoration: Theme.of(context).brightness == Brightness.dark
+          ? _homeDarkGlowDecoration()
+          : BoxDecoration(
+              borderRadius: BorderRadius.circular(26),
+              border: Border.all(color: AppTheme.accentRed.withValues(alpha: 0.22)),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [_glassGradientStart(context), _glassGradientEnd(context)],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _glassShadowColor(context),
+                  blurRadius: 30,
+                  offset: const Offset(0, 16),
+                ),
+              ],
+            ),
       child: child,
     );
   }

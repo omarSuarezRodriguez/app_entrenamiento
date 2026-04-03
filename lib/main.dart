@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'controllers/app_shell_controller.dart';
+import 'controllers/theme_controller.dart';
 import 'providers/workout_notifier.dart';
 import 'screens/home_screen.dart';
 import 'screens/settings_screen.dart';
@@ -23,9 +24,11 @@ Future<void> main() async {
 
   final workoutController = WorkoutController();
   final appShellController = AppShellController();
+  final themeController = ThemeController();
 
   Get.put(workoutController);
   Get.put(appShellController);
+  Get.put(themeController);
 
   await NotificationService.instance.init(
     onResponse: (response) async {
@@ -47,12 +50,32 @@ class EntrenamientoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      title: 'Training App',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark(),
-      home: const SplashScreen(),
-    );
+    final themeController = Get.find<ThemeController>();
+
+    return Obx(() {
+      final isDark = themeController.themeMode == ThemeMode.dark;
+      final overlayStyle = isDark
+          ? SystemUiOverlayStyle.light.copyWith(
+              statusBarColor: AppTheme.bgDeep,
+              systemNavigationBarColor: AppTheme.bgDeep,
+            )
+          : SystemUiOverlayStyle.dark.copyWith(
+              statusBarColor: Colors.white,
+              systemNavigationBarColor: Colors.white,
+              statusBarIconBrightness: Brightness.dark,
+              statusBarBrightness: Brightness.light,
+            );
+      SystemChrome.setSystemUIOverlayStyle(overlayStyle);
+
+      return GetMaterialApp(
+        title: 'Training App',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: themeController.themeMode,
+        home: const SplashScreen(),
+      );
+    });
   }
 }
 

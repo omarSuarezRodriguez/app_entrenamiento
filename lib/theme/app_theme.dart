@@ -20,6 +20,7 @@ class AppTheme {
         primary: accentRed,
         surface: bgCard,
       ),
+      dividerColor: Colors.white,
     );
     return base.copyWith(
       navigationBarTheme: NavigationBarThemeData(
@@ -40,6 +41,42 @@ class AppTheme {
       textTheme: GoogleFonts.dmSansTextTheme(
         base.textTheme,
       ).apply(bodyColor: Colors.white, displayColor: Colors.white),
+    );
+  }
+
+  static ThemeData light() {
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: Colors.white,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: accentRed,
+        brightness: Brightness.light,
+        primary: accentRed,
+        surface: Colors.white,
+      ),
+      dividerColor: Colors.black,
+    );
+
+    return base.copyWith(
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.white,
+        indicatorColor: accentRed.withOpacity(0.22),
+        labelTextStyle: WidgetStateProperty.all(
+          GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+      ),
+      cardTheme: CardThemeData(
+        color: Colors.white,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.grey.shade300, width: 1),
+        ),
+      ),
+      textTheme: GoogleFonts.dmSansTextTheme(
+        base.textTheme,
+      ).apply(bodyColor: Colors.black87, displayColor: Colors.black87),
     );
   }
 }

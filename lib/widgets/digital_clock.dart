@@ -96,6 +96,7 @@ class _DigitalClockState extends State<DigitalClock> {
     final s = _now.second.toString().padLeft(2, '0');
 
     final timeText = '$hour12:$m:$s';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final textStyle = GoogleFonts.orbitron(
       fontSize: 56,
       fontWeight: FontWeight.w700,
@@ -107,6 +108,14 @@ class _DigitalClockState extends State<DigitalClock> {
         ),
       ],
     );
+    final textStyle_2 = textStyle.copyWith(
+      fontFamily: 'Courier',
+      letterSpacing: 2,
+    );
+
+    final bgColors = isDark
+        ? [const Color(0xFF1A0A0E), AppTheme.bgCard, const Color(0xFF120810)]
+        : [Colors.white, Colors.white, Colors.white];
 
     return Container(
       width: double.infinity,
@@ -116,28 +125,23 @@ class _DigitalClockState extends State<DigitalClock> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF1A0A0E),
-            AppTheme.bgCard,
-            const Color(0xFF120810),
-          ],
+          colors: bgColors,
         ),
         border: Border.all(
-          color: AppTheme.accentRed.withValues(alpha: 0.35),
+          color: AppTheme.accentRed.withOpacity(isDark ? 0.35 : 0.18),
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.accentRed.withValues(alpha: 0.18),
+            color: AppTheme.accentRed.withOpacity(isDark ? 0.18 : 0.08),
             blurRadius: 40,
             spreadRadius: 2,
           ),
         ],
       ),
       child: Center(
-        child: Text(
-          timeText,
-          style: textStyle,
-          textAlign: TextAlign.center,
+        child: FittedBox(
+          //fit: BoxFit.scaleDown,
+          child: Text(timeText, style: textStyle, textAlign: TextAlign.center),
         ),
       ),
     );

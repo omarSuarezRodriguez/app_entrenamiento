@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../controllers/app_shell_controller.dart';
+import '../controllers/theme_controller.dart';
 import '../models/workout_settings.dart';
 import '../providers/workout_notifier.dart';
 import '../theme/app_theme.dart';
@@ -121,6 +122,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final seriesCtrl = _seriesCtrl;
     final restMinCtrl = _restMinCtrl;
     final restSecCtrl = _restSecCtrl;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (!_controllersReady ||
         seriesCtrl == null ||
         restMinCtrl == null ||
@@ -133,21 +135,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Configuración',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Configuración',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Ajusta tu rutina.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'Ajusta tu rutina.',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: AppTheme.textMuted),
+                IconButton(
+                  onPressed: () {
+                    final themeCtrl = Get.find<ThemeController>();
+                    themeCtrl.toggleTheme();
+                  },
+                  icon: Obx(() {
+                    final isDark = Get.find<ThemeController>().isDarkMode;
+                    return Icon(isDark ? Icons.light_mode : Icons.dark_mode);
+                  }),
+                  tooltip: 'Cambiar modo claro/oscuro',
                 ),
               ],
             ),
@@ -376,20 +393,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             width: 82,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
-                              vertical: 4,
+                              vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: AppTheme.bgCard.withValues(alpha: 0.8),
-                              border: Border.all(color: AppTheme.borderSubtle),
+                              color: isDark
+                                  ? AppTheme.bgCard.withValues(alpha: 0.8)
+                                  : Colors.white,
+                              border: Border.all(
+                                color: isDark
+                                    ? AppTheme.borderSubtle
+                                    : Colors.grey.shade200,
+                              ),
                               borderRadius: BorderRadius.circular(14),
+                              boxShadow: isDark ? null : [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<int>(
                                 value: _soundRepetitions,
                                 borderRadius: BorderRadius.circular(12),
-                                dropdownColor: AppTheme.bgCard.withValues(
-                                  alpha: 0.95,
-                                ),
+                                dropdownColor: isDark
+                                    ? AppTheme.bgCard.withValues(alpha: 0.95)
+                                    : Colors.white,
                                 menuMaxHeight: 180,
                                 items: List.generate(
                                   5,
@@ -400,23 +430,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         '$i',
                                         style: TextStyle(
                                           fontSize: 15,
-                                          color: AppTheme.textMuted,
+                                          color: isDark
+                                              ? Colors.white
+                                              : Colors.black87,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.arrow_drop_down,
                                   size: 22,
+                                  color: isDark ? Colors.white : Colors.grey.shade600,
                                 ),
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(
-                                      color: AppTheme.textMuted,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 15,
-                                    ),
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: isDark ? Colors.white : Colors.black87,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                ),
                                 onChanged: (v) =>
                                     setState(() => _soundRepetitions = v ?? 0),
                                 isDense: true,
