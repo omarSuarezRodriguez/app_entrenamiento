@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'controllers/app_shell_controller.dart';
 import 'providers/workout_notifier.dart';
 import 'screens/home_screen.dart';
@@ -106,6 +107,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     _pageController = PageController(initialPage: _shell.selectedIndex.value);
 
     WidgetsBinding.instance.addObserver(this);
+    WakelockPlus.enable();
 
     _shell.selectedIndex.listen((index) {
       if (_pageController.hasClients &&
@@ -129,10 +131,12 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      WakelockPlus.enable();
       _workout.reloadFromSession();
     } else if (state == AppLifecycleState.paused) {
       // Mantener la sesión en el almacenamiento para recuperación tras cierre o kill.
       _workout.persistSession();
+      WakelockPlus.disable();
     }
   }
 

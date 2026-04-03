@@ -89,79 +89,57 @@ class _DigitalClockState extends State<DigitalClock> {
 
   @override
   Widget build(BuildContext context) {
-    final h = _now.hour.toString().padLeft(2, '0');
+    final hour24 = _now.hour;
+    final hour12Raw = hour24 % 12;
+    final hour12 = (hour12Raw == 0 ? 12 : hour12Raw).toString().padLeft(2, '0');
     final m = _now.minute.toString().padLeft(2, '0');
     final s = _now.second.toString().padLeft(2, '0');
 
-    return LayoutBuilder(
-      builder: (context, c) {
-        final w = c.maxWidth;
-        final fontMain = (w * 0.18).clamp(36.0, 96.0);
-        final fontSec = fontMain * 0.42;
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(32),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFF1A0A0E),
-                AppTheme.bgCard,
-                const Color(0xFF120810),
-              ],
-            ),
-            border: Border.all(
-              color: AppTheme.accentRed.withValues(alpha: 0.35),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.accentRed.withValues(alpha: 0.18),
-                blurRadius: 40,
-                spreadRadius: 2,
-              ),
-            ],
+    final timeText = '$hour12:$m:$s';
+    final textStyle = GoogleFonts.orbitron(
+      fontSize: 56,
+      fontWeight: FontWeight.w700,
+      color: AppTheme.accentRed,
+      shadows: [
+        Shadow(
+          color: AppTheme.accentRed.withValues(alpha: 0.5),
+          blurRadius: 24,
+        ),
+      ],
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(32),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF1A0A0E),
+            AppTheme.bgCard,
+            const Color(0xFF120810),
+          ],
+        ),
+        border: Border.all(
+          color: AppTheme.accentRed.withValues(alpha: 0.35),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.accentRed.withValues(alpha: 0.18),
+            blurRadius: 40,
+            spreadRadius: 2,
           ),
-          child: Align(
-            alignment: Alignment.center,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _digitBox(h[0], fontMain, true),
-                  _digitBox(h[1], fontMain, true),
-                  const SizedBox(width: 2),
-                  Transform.translate(
-                    offset: const Offset(0, -2),
-                    child: _symbolBox(':', fontMain, true),
-                  ),
-                  const SizedBox(width: 2),
-                  _digitBox(m[0], fontMain, true),
-                  _digitBox(m[1], fontMain, true),
-                  const SizedBox(width: 2),
-                  Transform.translate(
-                    offset: const Offset(0, 12),
-                    child: _symbolBox(':', fontSec, false),
-                  ),
-                  const SizedBox(width: 2),
-                  Transform.translate(
-                    offset: const Offset(0, 12),
-                    child: _digitBox(s[0], fontSec, false),
-                  ),
-                  Transform.translate(
-                    offset: const Offset(0, 12),
-                    child: _digitBox(s[1], fontSec, false),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+        ],
+      ),
+      child: Center(
+        child: Text(
+          timeText,
+          style: textStyle,
+          textAlign: TextAlign.center,
+        ),
+      ),
     );
   }
 
