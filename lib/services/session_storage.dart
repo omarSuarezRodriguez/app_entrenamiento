@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:get_storage/get_storage.dart';
 
 import '../models/workout_phase.dart';
 
@@ -9,6 +9,7 @@ class SessionStorage {
   static final SessionStorage instance = SessionStorage._();
 
   static const _prefix = 'workout_session_v1_';
+  final GetStorage _box = GetStorage();
 
   Future<void> save({
     required WorkoutPhase phase,
@@ -16,13 +17,12 @@ class SessionStorage {
     required int? restEndsAtMs,
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('${_prefix}phase', phase.name);
-      await prefs.setInt('${_prefix}currentSet', currentSet);
+      await _box.write('${_prefix}phase', phase.name);
+      await _box.write('${_prefix}currentSet', currentSet);
       if (restEndsAtMs != null) {
-        await prefs.setInt('${_prefix}restEndsAt', restEndsAtMs);
+        await _box.write('${_prefix}restEndsAt', restEndsAtMs);
       } else {
-        await prefs.remove('${_prefix}restEndsAt');
+        await _box.remove('${_prefix}restEndsAt');
       }
     } catch (e) {
       debugPrint('Error saving session: $e');
@@ -31,26 +31,27 @@ class SessionStorage {
 
   Future<void> clear() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('${_prefix}phase');
-      await prefs.remove('${_prefix}currentSet');
-      await prefs.remove('${_prefix}restEndsAt');
+      await _box.remove('${_prefix}phase');
+      await _box.remove('${_prefix}currentSet');
+      await _box.remove('${_prefix}restEndsAt');
     } catch (e) {
       debugPrint('Error clearing session: $e');
     }
   }
 
-  Future<({WorkoutPhase phase, int currentSet, int? restEndsAtMs})?> load() async {
+  Future<({WorkoutPhase phase, int currentSet, int? restEndsAtMs})?>
+  load() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final phaseName = prefs.getString('${_prefix}phase');
-      if (phaseName == null) return null;
+      final phaseName = _box.read<String>('${_prefix}phase');
+      if (phaseName == null) {
+        return null;
+      }
       final phase = WorkoutPhase.values.firstWhere(
         (e) => e.name == phaseName,
         orElse: () => WorkoutPhase.idle,
       );
-      final currentSet = prefs.getInt('${_prefix}currentSet') ?? 1;
-      final restEndsAt = prefs.getInt('${_prefix}restEndsAt');
+      final currentSet = _box.read<int>('${_prefix}currentSet') ?? 1;
+      final restEndsAt = _box.read<int?>('${_prefix}restEndsAt');
       return (phase: phase, currentSet: currentSet, restEndsAtMs: restEndsAt);
     } catch (e) {
       debugPrint('Error loading session: $e');

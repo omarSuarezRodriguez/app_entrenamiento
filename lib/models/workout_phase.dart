@@ -1,6 +1,1 @@
-enum WorkoutPhase {
-  idle,
-  working,
-  resting,
-  completed,
-}
+enum WorkoutPhase { idle, working, resting, completed }

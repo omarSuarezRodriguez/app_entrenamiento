@@ -2,39 +2,43 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
+import 'controllers/app_shell_controller.dart';
 import 'providers/workout_notifier.dart';
 import 'screens/home_screen.dart';
 import 'screens/settings_screen.dart';
-import 'services/notification_service.dart' show NotificationService, kActionNextRep;
+import 'services/notification_service.dart'
+    show NotificationService, kActionNextRep;
 import 'services/session_storage.dart';
-import 'services/workout_background.dart' show workoutBackgroundNotificationHandler;
+import 'services/workout_background.dart'
+    show workoutBackgroundNotificationHandler;
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final workout = WorkoutNotifier();
+  await GetStorage.init();
+
+  final workoutController = WorkoutController();
+  final appShellController = AppShellController();
+
+  Get.put(workoutController);
+  Get.put(appShellController);
 
   await NotificationService.instance.init(
     onResponse: (response) async {
       if (response.actionId == kActionNextRep) {
-        workout.onNotificationNext();
-        // Minimizar la app después de ejecutar la acción
+        Get.find<WorkoutController>().onNotificationNext();
         await SystemChannels.platform.invokeMethod('moveTaskToBack', true);
       }
     },
     onBackgroundResponse: workoutBackgroundNotificationHandler,
   );
 
-  await workout.init();
+  await workoutController.init();
 
-  runApp(
-    ChangeNotifierProvider<WorkoutNotifier>.value(
-      value: workout,
-      child: const EntrenamientoApp(),
-    ),
-  );
+  runApp(const EntrenamientoApp());
 }
 
 class EntrenamientoApp extends StatelessWidget {
@@ -42,7 +46,7 @@ class EntrenamientoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       title: 'Training App',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark(),
@@ -63,9 +67,9 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     Timer(const Duration(seconds: 1), () {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MainShell()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const MainShell()));
     });
   }
 
@@ -74,7 +78,9 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Center(
-        child: Image.asset('assets/icon/app_icon.png'), // Asumiendo que el icono está aquí
+        child: Image.asset(
+          'assets/icon/app_icon.png',
+        ), // Asumiendo que el icono está aquí
       ),
     );
   }
@@ -88,14 +94,29 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
-  int _index = 0;
   late final PageController _pageController;
+  late final AppShellController _shell;
+  late final WorkoutController _workout;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: _index);
+    _shell = Get.find<AppShellController>();
+    _workout = Get.find<WorkoutController>();
+    _pageController = PageController(initialPage: _shell.selectedIndex.value);
+
     WidgetsBinding.instance.addObserver(this);
+
+    _shell.selectedIndex.listen((index) {
+      if (_pageController.hasClients &&
+          _pageController.page?.round() != index) {
+        _pageController.animateToPage(
+          index,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
   }
 
   @override
@@ -108,13 +129,10 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      context.read<WorkoutNotifier>().reloadFromSession();
-    } else if (state == AppLifecycleState.detached) {
-      // Cancelar notificación y limpiar sesión cuando app se cierra completamente
-      NotificationService.instance.cancelOngoing();
-      NotificationService.instance.cancelRestAlarm();
-      // Limpiar sesión para estado limpio al reabrir
-      unawaited(SessionStorage.instance.clear());
+      _workout.reloadFromSession();
+    } else if (state == AppLifecycleState.paused) {
+      // Mantener la sesión en el almacenamiento para recuperación tras cierre o kill.
+      _workout.persistSession();
     }
   }
 
@@ -127,41 +145,36 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           physics: const BouncingScrollPhysics(),
           scrollDirection: Axis.horizontal,
           onPageChanged: (index) {
-            setState(() {
-              _index = index;
-            });
+            _shell.setIndex(index);
           },
-          children: const [
-            HomeScreen(),
-            SettingsScreen(),
-          ],
+          children: const [HomeScreen(), SettingsScreen()],
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        height: 64,
-        selectedIndex: _index,
-        onDestinationSelected: (i) {
-          setState(() {
-            _index = i;
-          });
-          _pageController.animateToPage(
-            i,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Inicio',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings_rounded),
-            label: 'Configuración',
-          ),
-        ],
+      bottomNavigationBar: Obx(
+        () => NavigationBar(
+          height: 64,
+          selectedIndex: _shell.selectedIndex.value,
+          onDestinationSelected: (i) {
+            _shell.setIndex(i);
+            _pageController.animateToPage(
+              i,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+          },
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded),
+              label: 'Inicio',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings_rounded),
+              label: 'Configuración',
+            ),
+          ],
+        ),
       ),
     );
   }

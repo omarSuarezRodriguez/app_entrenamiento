@@ -34,13 +34,15 @@ class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
 
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
 
   bool _ready = false;
 
-  AndroidFlutterLocalNotificationsPlugin? get _android =>
-      _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+  AndroidFlutterLocalNotificationsPlugin? get _android => _plugin
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >();
 
   Future<void> init({
     void Function(NotificationResponse response)? onResponse,
@@ -165,7 +167,11 @@ class NotificationService {
     return pattern;
   }
 
-  AndroidNotificationDetails _androidOngoingDetails(String title, String body, bool playSound) {
+  AndroidNotificationDetails _androidOngoingDetails(
+    String title,
+    String body,
+    bool playSound,
+  ) {
     return AndroidNotificationDetails(
       _kRoutineChannelId,
       'Training App · rutina',
@@ -219,8 +225,7 @@ class NotificationService {
           '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
       final endTimeText = endTime != null ? ' - $endTime' : '';
       title = 'Descanso $countdown$endTimeText';
-      body =
-          '$countdown hasta la serie $next de $totalSeries';
+      body = '$countdown hasta la serie $next de $totalSeries';
     } else if (phase == WorkoutPhase.working) {
       title = 'Serie $currentSet de $totalSeries';
       body = 'Toca Siguiente al terminar la serie';
@@ -300,7 +305,9 @@ class NotificationService {
           priority: Priority.high,
           playSound: playSound,
           enableVibration: true,
-          vibrationPattern: Int64List.fromList(_buildVibrationPattern(soundRepetitions)),
+          vibrationPattern: Int64List.fromList(
+            _buildVibrationPattern(soundRepetitions),
+          ),
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,

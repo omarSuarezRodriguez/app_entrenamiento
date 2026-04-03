@@ -1,8 +1,9 @@
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 
+import '../controllers/app_shell_controller.dart';
 import '../models/workout_settings.dart';
 import '../providers/workout_notifier.dart';
 import '../theme/app_theme.dart';
@@ -36,10 +37,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _initControllers() {
     if (!mounted || _controllersReady) return;
-    final w = context.read<WorkoutNotifier>().workoutSettings;
+    final w = Get.find<WorkoutController>().workoutSettings;
     final seriesIdx = ((w?.seriesCount ?? 4).clamp(1, _seriesOptions)) - 1;
-    final rest =
-        (w?.restSeconds ?? 60).clamp(1, _minSlots * 60 + _secSlots - 1);
+    final rest = (w?.restSeconds ?? 60).clamp(
+      1,
+      _minSlots * 60 + _secSlots - 1,
+    );
     final minIdx = (rest ~/ 60).clamp(0, _minSlots - 1);
     final secIdx = (rest % 60).clamp(0, _secSlots - 1);
 
@@ -70,15 +73,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _save() async {
     final series = _seriesIndex + 1;
-    await context.read<WorkoutNotifier>().saveSettings(
-          WorkoutSettings(
-            seriesCount: series,
-            restSeconds: _restTotalSeconds,
-            soundEnabled: _soundRepetitions > 0,
-            soundRepetitions: _soundRepetitions,
-          ),
-        );
+    await Get.find<WorkoutController>().saveSettings(
+      WorkoutSettings(
+        seriesCount: series,
+        restSeconds: _restTotalSeconds,
+        soundEnabled: _soundRepetitions > 0,
+        soundRepetitions: _soundRepetitions,
+      ),
+    );
     if (!mounted) return;
+    Get.find<AppShellController>().setIndex(0);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text('Configuración guardada'),
@@ -135,15 +139,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Text(
                   'Configuración',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'Ajusta tu rutina.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.textMuted,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: AppTheme.textMuted),
                 ),
               ],
             ),
@@ -162,10 +166,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         Text(
                           'Cantidad de series',
-                          style:
-                              Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 8),
                         SizedBox(
@@ -204,10 +206,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         Text(
                           'Tiempo entre series',
-                          style:
-                              Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 12),
                         Row(
@@ -284,8 +284,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       onChanged: (i) =>
                                           setState(() => _restSecIndex = i),
                                       itemBuilder: (_, index, sel) {
-                                        final label =
-                                            index.toString().padLeft(2, '0');
+                                        final label = index.toString().padLeft(
+                                          2,
+                                          '0',
+                                        );
                                         return Center(
                                           child: Text(
                                             label,
@@ -339,31 +341,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Card(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Sonido al terminar serie',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 6,
+                      ),
                       child: Row(
                         children: [
                           const Expanded(
                             child: Text(
                               'Repeticiones de sonido:',
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                           Container(
                             width: 82,
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: AppTheme.bgCard.withValues(alpha: 0.8),
                               border: Border.all(color: AppTheme.borderSubtle),
@@ -373,7 +387,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: DropdownButton<int>(
                                 value: _soundRepetitions,
                                 borderRadius: BorderRadius.circular(12),
-                                dropdownColor: AppTheme.bgCard.withValues(alpha: 0.95),
+                                dropdownColor: AppTheme.bgCard.withValues(
+                                  alpha: 0.95,
+                                ),
                                 menuMaxHeight: 180,
                                 items: List.generate(
                                   5,
@@ -391,13 +407,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   ),
                                 ),
-                                icon: const Icon(Icons.arrow_drop_down, size: 22),
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                icon: const Icon(
+                                  Icons.arrow_drop_down,
+                                  size: 22,
+                                ),
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
                                       color: AppTheme.textMuted,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 15,
                                     ),
-                                onChanged: (v) => setState(() => _soundRepetitions = v ?? 0),
+                                onChanged: (v) =>
+                                    setState(() => _soundRepetitions = v ?? 0),
                                 isDense: true,
                               ),
                             ),
@@ -426,7 +447,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               child: Text(
                 'Guardar ajustes',
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),

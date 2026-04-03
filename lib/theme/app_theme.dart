@@ -37,10 +37,9 @@ class AppTheme {
           side: const BorderSide(color: borderSubtle, width: 1),
         ),
       ),
-      textTheme: GoogleFonts.dmSansTextTheme(base.textTheme).apply(
-        bodyColor: Colors.white,
-        displayColor: Colors.white,
-      ),
+      textTheme: GoogleFonts.dmSansTextTheme(
+        base.textTheme,
+      ).apply(bodyColor: Colors.white, displayColor: Colors.white),
     );
   }
 }

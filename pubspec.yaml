@@ -11,11 +11,11 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  shared_preferences: ^2.3.5
   flutter_local_notifications: ^18.0.1
   timezone: ^0.10.0
   flutter_timezone: ^3.0.1
-  provider: ^6.1.2
+  get: ^4.6.5
+  get_storage: ^2.1.1
   google_fonts: ^6.2.1
   permission_handler: ^11.3.1
   flutter_ringtone_player: ^4.0.0+4

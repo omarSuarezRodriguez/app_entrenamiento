@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:provider/provider.dart';
 
 import '../models/workout_phase.dart';
 import '../models/rest_log_entry.dart';
@@ -28,64 +28,68 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final w = context.watch<WorkoutNotifier>();
-    final settings = w.workoutSettings;
-    final showStart = w.hasSavedSettings &&
-        w.phase == WorkoutPhase.idle;
+    return GetBuilder<WorkoutController>(
+      builder: (w) {
+        final settings = w.workoutSettings;
+        final showStart = w.hasSavedSettings && w.phase == WorkoutPhase.idle;
 
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Inicio',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Reloj y control de tu rutina.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        return CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Inicio',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Reloj y control de tu rutina.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppTheme.textMuted,
                       ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: const DigitalClock(),
-          ),
-        ),
-        if (settings != null) ...[
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-              child: _SummaryChip(settings: settings),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: const DigitalClock(),
+              ),
             ),
-          ),
-        ],
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: _RoutinePanel(showStart: showStart),
-          ),
-        ),
-        if (w.restHistory.isNotEmpty)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              child: _RestHistoryList(entries: w.restHistory),
+            if (settings != null) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                  child: _SummaryChip(settings: settings),
+                ),
+              ),
+            ],
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: _RoutinePanel(
+                  showStart: showStart,
+                  workoutController: w,
+                ),
+              ),
             ),
-          ),
-      ],
+            if (w.restHistory.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  child: _RestHistoryList(entries: w.restHistory),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -112,15 +116,18 @@ class _SummaryChip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.fitness_center_rounded, color: AppTheme.accentRed.withValues(alpha: 0.9)),
+          Icon(
+            Icons.fitness_center_rounded,
+            color: AppTheme.accentRed.withValues(alpha: 0.9),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               '${settings.seriesCount} series · ${_fmtRestBetweenLabel(settings.restSeconds)} · '
               '${settings.soundEnabled ? "sonido on" : "sonido off"}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textMuted,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppTheme.textMuted),
             ),
           ),
         ],
@@ -130,13 +137,17 @@ class _SummaryChip extends StatelessWidget {
 }
 
 class _RoutinePanel extends StatelessWidget {
-  const _RoutinePanel({required this.showStart});
+  const _RoutinePanel({
+    required this.showStart,
+    required this.workoutController,
+  });
 
   final bool showStart;
+  final WorkoutController workoutController;
 
   @override
   Widget build(BuildContext context) {
-    final w = context.watch<WorkoutNotifier>();
+    final w = workoutController;
     final total = w.workoutSettings?.seriesCount ?? 0;
 
     if (!w.hasSavedSettings) {
@@ -181,7 +192,7 @@ class _RoutinePanel extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: () => context.read<WorkoutNotifier>().startRoutine(),
+                  onPressed: () => w.startRoutine(),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppTheme.accentRed,
                     foregroundColor: Colors.white,
@@ -232,8 +243,7 @@ class _RoutinePanel extends StatelessWidget {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () =>
-                            context.read<WorkoutNotifier>().abortRoutine(),
+                        onPressed: () => w.abortRoutine(),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppTheme.textMuted,
                           side: const BorderSide(color: AppTheme.borderSubtle),
@@ -246,8 +256,7 @@ class _RoutinePanel extends StatelessWidget {
                     Expanded(
                       flex: 2,
                       child: FilledButton(
-                        onPressed: () =>
-                            context.read<WorkoutNotifier>().nextRep(),
+                        onPressed: () => w.nextRep(),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppTheme.accentRed,
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -325,8 +334,7 @@ class _RoutinePanel extends StatelessWidget {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () =>
-                            context.read<WorkoutNotifier>().abortRoutine(),
+                        onPressed: () => w.abortRoutine(),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppTheme.textMuted,
                           side: const BorderSide(color: AppTheme.borderSubtle),
@@ -339,8 +347,7 @@ class _RoutinePanel extends StatelessWidget {
                     Expanded(
                       flex: 2,
                       child: FilledButton.icon(
-                        onPressed: () =>
-                            context.read<WorkoutNotifier>().nextRep(),
+                        onPressed: () => w.nextRep(),
                         icon: const Icon(Icons.skip_next_rounded),
                         label: const Text('Siguiente serie'),
                         style: FilledButton.styleFrom(
@@ -375,8 +382,7 @@ class _RoutinePanel extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 FilledButton(
-                  onPressed: () =>
-                      context.read<WorkoutNotifier>().resetAfterComplete(),
+                  onPressed: () => w.resetAfterComplete(),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppTheme.accentRed,
                     padding: const EdgeInsets.symmetric(
@@ -414,9 +420,9 @@ class _RestHistoryList extends StatelessWidget {
           child: Text(
             'Tiempos de descanso',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textMuted,
-                ),
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textMuted,
+            ),
           ),
         ),
         ...entries.asMap().entries.map((e) {
@@ -494,9 +500,7 @@ class _GlassCard extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: AppTheme.accentRed.withValues(alpha: 0.22),
-        ),
+        border: Border.all(color: AppTheme.accentRed.withValues(alpha: 0.22)),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

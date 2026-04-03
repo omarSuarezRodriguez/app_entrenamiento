@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
 import '../models/rest_log_entry.dart';
@@ -12,13 +13,14 @@ import '../services/notification_service.dart' show NotificationService;
 import '../services/session_storage.dart';
 import '../services/settings_storage.dart';
 
-class WorkoutNotifier extends ChangeNotifier {
-  WorkoutNotifier();
+class WorkoutController extends GetxController {
+  WorkoutController();
 
   Timer? _tickTimer;
 
   WorkoutSettings? _workoutSettings;
   WorkoutPhase _phase = WorkoutPhase.idle;
+
   /// Durante trabajo: serie en curso (1..N). Durante descanso: serie recién terminada antes del descanso.
   int _currentSet = 1;
   DateTime? _restEndsAt;
@@ -71,8 +73,10 @@ class WorkoutNotifier extends ChangeNotifier {
 
   void _startTicker() {
     _tickTimer?.cancel();
-    _tickTimer =
-        Timer.periodic(const Duration(milliseconds: 100), (_) => _onTick());
+    _tickTimer = Timer.periodic(
+      const Duration(milliseconds: 100),
+      (_) => _onTick(),
+    );
   }
 
   void _stopTicker() {
@@ -93,7 +97,9 @@ class WorkoutNotifier extends ChangeNotifier {
         _phase = saved.phase;
         _currentSet = saved.currentSet;
         if (saved.restEndsAtMs != null) {
-          _restEndsAt = DateTime.fromMillisecondsSinceEpoch(saved.restEndsAtMs!);
+          _restEndsAt = DateTime.fromMillisecondsSinceEpoch(
+            saved.restEndsAtMs!,
+          );
           if (_phase == WorkoutPhase.resting && _workoutSettings != null) {
             _restStartedAt = _restEndsAt!.subtract(
               Duration(seconds: _workoutSettings!.restSeconds),
@@ -108,7 +114,7 @@ class WorkoutNotifier extends ChangeNotifier {
 
       _startTicker();
       await _syncOngoingNotification();
-      notifyListeners();
+      update();
     } catch (e, st) {
       debugPrint('Error en WorkoutNotifier.init(): $e\n$st');
       // En caso de error, resetear a idle
@@ -120,7 +126,7 @@ class WorkoutNotifier extends ChangeNotifier {
       await SessionStorage.instance.clear();
       await NotificationService.instance.cancelOngoing();
       _startTicker();
-      notifyListeners();
+      update();
     }
   }
 
@@ -132,9 +138,7 @@ class WorkoutNotifier extends ChangeNotifier {
       final saved = await SessionStorage.instance.load();
 
       if (saved == null) {
-        if (_phase == WorkoutPhase.working || _phase == WorkoutPhase.resting) {
-          abortRoutine();
-        }
+        // Durante transición o race condition, mantén el estado actual en memoria.
         return;
       }
       if (saved.phase == WorkoutPhase.idle ||
@@ -145,8 +149,7 @@ class WorkoutNotifier extends ChangeNotifier {
       _phase = saved.phase;
       _currentSet = saved.currentSet;
       if (saved.restEndsAtMs != null) {
-        _restEndsAt =
-            DateTime.fromMillisecondsSinceEpoch(saved.restEndsAtMs!);
+        _restEndsAt = DateTime.fromMillisecondsSinceEpoch(saved.restEndsAtMs!);
         if (_workoutSettings != null) {
           _restStartedAt = _restEndsAt!.subtract(
             Duration(seconds: _workoutSettings!.restSeconds),
@@ -176,8 +179,12 @@ class WorkoutNotifier extends ChangeNotifier {
       await NotificationService.instance.cancelOngoing();
       await NotificationService.instance.cancelRestAlarm();
     } finally {
-      notifyListeners();
+      update();
     }
+  }
+
+  Future<void> persistSession() async {
+    await _persistSession();
   }
 
   int _lastNotifComposite = -1;
@@ -209,7 +216,7 @@ class WorkoutNotifier extends ChangeNotifier {
         return;
       }
       _syncNotifIfNeeded();
-      notifyListeners();
+      update();
       return;
     }
   }
@@ -247,16 +254,16 @@ class WorkoutNotifier extends ChangeNotifier {
     if (_workoutSettings!.soundEnabled) {
       SystemSound.play(SystemSoundType.alert);
     }
-    notifyListeners();
+    update();
   }
 
   Future<void> saveSettings(WorkoutSettings s) async {
     await SettingsStorage.instance.save(s);
     _workoutSettings = SettingsStorage.instance.cached;
-    notifyListeners();
+    update();
   }
 
-  void startRoutine() {
+  Future<void> startRoutine() async {
     if (!hasSavedSettings || _workoutSettings == null) return;
     _restHistory.clear();
     _phase = WorkoutPhase.working;
@@ -264,27 +271,27 @@ class WorkoutNotifier extends ChangeNotifier {
     _restEndsAt = null;
     _restStartedAt = null;
     _lastNotifComposite = -1;
-    unawaited(_persistSession());
-    unawaited(_syncOngoingNotification());
-    notifyListeners();
+    await _persistSession();
+    await _syncOngoingNotification();
+    update();
   }
 
   void onNotificationNext() {
     nextRep();
   }
 
-  void nextRep() {
+  Future<void> nextRep() async {
     if (_workoutSettings == null) return;
     switch (_phase) {
       case WorkoutPhase.working:
         if (_currentSet < _workoutSettings!.seriesCount) {
-          _startRest();
+          await _startRest();
         } else {
           _finishRoutine();
         }
         break;
       case WorkoutPhase.resting:
-        unawaited(NotificationService.instance.cancelRestAlarm());
+        await NotificationService.instance.cancelRestAlarm();
         _recordRestEnd();
         final next = _currentSet + 1;
         if (next > _workoutSettings!.seriesCount) {
@@ -294,17 +301,17 @@ class WorkoutNotifier extends ChangeNotifier {
           _phase = WorkoutPhase.working;
           _restEndsAt = null;
           _lastNotifComposite = -1;
-          unawaited(_persistSession());
-          unawaited(_syncOngoingNotification());
+          await _persistSession();
+          await _syncOngoingNotification();
+          update();
         }
-        notifyListeners();
         break;
       default:
         break;
     }
   }
 
-  void _startRest() {
+  Future<void> _startRest() async {
     if (_workoutSettings == null) return;
     _phase = WorkoutPhase.resting;
     _notificationShown = false; // Reset para que suene en el nuevo descanso
@@ -313,14 +320,14 @@ class WorkoutNotifier extends ChangeNotifier {
       Duration(seconds: _workoutSettings!.restSeconds),
     );
     _lastNotifComposite = -1;
-    unawaited(_persistSession());
-    unawaited(NotificationService.instance.scheduleRestComplete(
+    await _persistSession();
+    await NotificationService.instance.scheduleRestComplete(
       when: _restEndsAt!,
       playSound: false,
       soundRepetitions: _workoutSettings!.soundRepetitions,
-    ));
-    unawaited(_syncOngoingNotification());
-    notifyListeners();
+    );
+    await _syncOngoingNotification();
+    update();
   }
 
   void _finishRoutine() {
@@ -331,7 +338,7 @@ class WorkoutNotifier extends ChangeNotifier {
     unawaited(NotificationService.instance.cancelOngoing());
     unawaited(NotificationService.instance.cancelRestAlarm());
     unawaited(SessionStorage.instance.clear());
-    notifyListeners();
+    update();
   }
 
   void resetAfterComplete() {
@@ -341,7 +348,7 @@ class WorkoutNotifier extends ChangeNotifier {
     _restStartedAt = null;
     _restHistory.clear();
     unawaited(SessionStorage.instance.clear());
-    notifyListeners();
+    update();
   }
 
   void abortRoutine() {
@@ -353,7 +360,7 @@ class WorkoutNotifier extends ChangeNotifier {
     unawaited(NotificationService.instance.cancelOngoing());
     unawaited(NotificationService.instance.cancelRestAlarm());
     unawaited(SessionStorage.instance.clear());
-    notifyListeners();
+    update();
   }
 
   Future<void> _persistSession() async {
@@ -369,28 +376,32 @@ class WorkoutNotifier extends ChangeNotifier {
   }
 
   Future<void> _syncOngoingNotification() async {
-    if (_workoutSettings == null) return;
-    if (_phase == WorkoutPhase.idle || _phase == WorkoutPhase.completed) {
-      _notificationShown = false;
-      await NotificationService.instance.cancelOngoing();
-      return;
-    }
-    String? endTime;
-    if (_phase == WorkoutPhase.resting && _restEndsAt != null) {
-      endTime = DateFormat('h:mm:ss').format(_restEndsAt!);
-    }
-    await NotificationService.instance.showOngoingWorkout(
-      currentSet: _currentSet,
-      totalSeries: _workoutSettings!.seriesCount,
-      phase: _phase,
-      restRemainingSec: restRemainingSeconds,
-      nextSetAfterRest: nextSetAfterRest,
-      wallClock: _wallClockNow(),
-      playSound: _phase == WorkoutPhase.resting && !_notificationShown,
-      endTime: endTime,
-    );
-    if (_phase == WorkoutPhase.resting) {
-      _notificationShown = true;
+    try {
+      if (_workoutSettings == null) return;
+      if (_phase == WorkoutPhase.idle || _phase == WorkoutPhase.completed) {
+        _notificationShown = false;
+        await NotificationService.instance.cancelOngoing();
+        return;
+      }
+      String? endTime;
+      if (_phase == WorkoutPhase.resting && _restEndsAt != null) {
+        endTime = DateFormat('h:mm:ss').format(_restEndsAt!);
+      }
+      await NotificationService.instance.showOngoingWorkout(
+        currentSet: _currentSet,
+        totalSeries: _workoutSettings!.seriesCount,
+        phase: _phase,
+        restRemainingSec: restRemainingSeconds,
+        nextSetAfterRest: nextSetAfterRest,
+        wallClock: _wallClockNow(),
+        playSound: _phase == WorkoutPhase.resting && !_notificationShown,
+        endTime: endTime,
+      );
+      if (_phase == WorkoutPhase.resting) {
+        _notificationShown = true;
+      }
+    } catch (e, st) {
+      debugPrint('Error syncing notification: $e\n$st');
     }
   }
 
